@@ -1,0 +1,21 @@
+# Data files
+*.dat
+*.npy
+*.p
+
+# SLURM FILES
+
+job_submission*
+
+# ARBITRARY
+
+fourier_transform_and_plot.py
+sparse_propagation.f90
+
+# Python cache / compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.cpython-*
+fort.300
+.nfs*

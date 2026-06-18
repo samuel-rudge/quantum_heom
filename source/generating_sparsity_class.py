@@ -1,3 +1,151 @@
+"""
+===============================================================================
+GENERATING SPARSE HEOM LIOUVILLIAN
+===============================================================================
+
+This module constructs the sparse representation of the full HEOM Liouvillian
+for quantum molecular systems where **all degrees of freedom (electronic + 
+vibrational)** are treated fully quantum mechanically.
+
+The goal is to build an efficient sparse superoperator representation of the
+hierarchical equations of motion (HEOM), including all auxiliary density
+operators (ADOs), and to prepare it for high-performance propagation using
+Fortran-based sparse linear algebra routines (MKL-backed CSR operations).
+
+-------------------------------------------------------------------------------
+PHYSICAL ROLE
+-------------------------------------------------------------------------------
+
+The HEOM Liouvillian encodes:
+
+- coherent molecular dynamics (full vibronic Hamiltonian)
+- mol-lead coupling contributions
+- bath correlation function expansion terms (eta,gamma coefficients)
+- hierarchical ADO coupling structure
+
+Unlike reduced or mixed approaches, the vibrational and electronic degrees of
+freedom are both embedded directly in the molecular density matrix space,
+resulting in a fully quantum vibronic HEOM formulation.
+
+-------------------------------------------------------------------------------
+INPUTS (from generate_quantum_heom_class / system construction stage)
+-------------------------------------------------------------------------------
+
+The class is initialized with precomputed HEOM structural objects:
+
+- HEOM connectivity tensors:
+    - ksiglm, tier_index
+    - index_minus, index_plus
+
+- Operator representations:
+    - d_ops_comp, d_ops_comp_log
+    - ham_log (log-space Hamiltonian representation)
+    - rho_0_log (initial density matrix in log-space)
+
+- Bath decomposition data:
+    - gamma_vec (decay rates)
+    - eta_vec (expansion coefficients)
+
+- System structure:
+    - nmax (hierarchy depth)
+    - nel (number of electronic levels)
+    - nsign, nleads, npoles
+    - dim_rho (full vibronic Fock-space dimension)
+    - degenerate_levels
+
+- Numerical parameters:
+    - atol, rtol (adaptive solver tolerances)
+    - max_expan_order (HEOM truncation order)
+
+- Coordinate-dependent operators:
+    - molham_one_x (vibronic Hamiltonian evaluated at a configuration)
+    - el_lead_couplings_one_x (system-lead coupling tensor)
+
+-------------------------------------------------------------------------------
+CORE FUNCTIONAL STEPS
+-------------------------------------------------------------------------------
+
+Upon initialization, the class constructs the sparse HEOM Liouvillian via:
+
+1. IDENTIFICATION OF NONZERO ADO COUPLINGS
+   - determines which density matrix and ADO elements are dynamically active
+
+2. STRUCTURAL MATRIX BUILDING
+   - constructs full sparse connectivity of HEOM superoperator
+   - identifies Hamiltonian, bath, and coupling contributions separately
+
+3. POLE DECOMPOSITION
+   - computes weights (eta) and frequencies (gamma) of poles describing
+     bath-correlation function
+
+4. FILTERING OF ZERO CONTRIBUTIONS
+   - removes numerically inactive couplings
+   - prunes disconnected Liouvillian components
+   - reduces sparse operator size for efficiency
+
+5. CONNECTIVITY ANALYSIS
+   - builds graph representation of Liouvillian connectivity
+   - ensures propagation-relevant subspace is retained only
+
+6. CSR-READY STRUCTURE GENERATION
+   - outputs MKL-compatible sparse arrays
+   - prepares row/column/value triplets
+   - constructs trace-preserving projection structure
+
+-------------------------------------------------------------------------------
+OUTPUT REPRESENTATION
+-------------------------------------------------------------------------------
+
+The final object contains a fully sparse HEOM Liouvillian defined by:
+
+- pair_info_row_fil / pair_info_col_fil:
+    Row and column indices of nonzero Liouvillian elements
+
+- pair_values_fil:
+    Complex-valued Liouvillian matrix elements
+
+- pair_values_gamma_fil:
+    Bath-induced diagonal contributions
+
+- indexing metadata:
+    - npairs_fil (final nonzero couplings)
+    - nnz_elements_sparse_fil (active Liouville-space dimension)
+    - is_connected_array (dynamically reachable subspace mask)
+
+- trace structure:
+    - sparse_trace_array (trace-preserving projection operator)
+
+- solver support arrays:
+    - atol_vec / rtol_vec (adaptive integration tolerances)
+    - rhs_vector (initial RHS structure)
+
+-------------------------------------------------------------------------------
+NUMERICAL PURPOSE
+-------------------------------------------------------------------------------
+
+This module enables:
+
+- efficient sparse propagation of HEOM dynamics
+- compatibility with MKL CSR matrix-vector routines
+- elimination of inactive ADO space
+- scalable propagation in large vibronic Fock spaces
+
+-------------------------------------------------------------------------------
+PHYSICAL INTERPRETATION
+-------------------------------------------------------------------------------
+
+Each nonzero entry corresponds to a physical coupling between:
+
+- vibrational-electronic Fock states
+- hierarchical bath excitation levels (ADO tiers)
+- lead-induced transitions (electron exchange processes)
+
+The resulting sparse Liouvillian fully encodes the quantum dynamics of
+molecules coupled to metallic or molecular environments.
+
+===============================================================================
+"""
+
 import sparsity
 import gc
 import scipy.sparse as sparse

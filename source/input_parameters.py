@@ -1,3 +1,94 @@
+"""
+QUANTUM HEOM
+Input Parameter Specification Module
+
+This file defines all physical, numerical, and computational parameters
+used throughout the HEOM simulation framework.
+
+It acts as the central configuration layer controlling:
+
+    - electronic structure of the system
+    - vibrational (classical and quantum) degrees of freedom
+    - molecule-lead coupling
+    - bath spectral properties
+    - HEOM hierarchy truncation and convergence settings
+    - time propagation and numerical tolerances
+    - spatial nuclear coordinate grid definition
+    - output and diagnostic options
+
+-----------------------------------------------------------------------
+GENERAL STRUCTURE
+-----------------------------------------------------------------------
+
+The parameters are organized into the following sections:
+
+1. System size and basis definition
+2. HEOM hierarchy and bath decomposition settings
+3. Numerical propagation and solver controls
+4. Bath (lead) physical parameters
+5. Vibrational mode definitions (classical and quantum)
+6. Electronic Hamiltonian specification
+7. Nuclear coordinate grid definition
+8. Molecule-lead coupling model
+9. Output and runtime control flags
+
+-----------------------------------------------------------------------
+UNITS
+-----------------------------------------------------------------------
+
+Unless otherwise stated, all quantities are expressed in:
+
+    - electron volts (eV) for energies
+    - dimensionless coordinates for vibrational modes
+    - atomic units implied where appropriate for dynamical quantities
+
+-----------------------------------------------------------------------
+EXECUTION MODEL
+-----------------------------------------------------------------------
+
+This file is NOT executed directly.
+
+It is imported by the main driver:
+
+    qu_heom_main.py
+
+All parameters defined here are read at import time and remain fixed
+throughout a simulation run.
+
+-----------------------------------------------------------------------
+MODEL FLEXIBILITY
+-----------------------------------------------------------------------
+
+The framework supports:
+
+    - single or multi-level electronic systems
+    - multiple vibrational modes (classical and quantum)
+    - arbitrary lead configurations (number of electrodes = Nleads)
+    - tunable molecule-lead coupling matrices
+    - flexible spectral decomposition schemes (Pade / barycentric)
+    - optional wide-band limit approximation
+
+-----------------------------------------------------------------------
+COMPUTATIONAL NOTES
+
+- This file strongly influences memory scaling through:
+    Nmax,Nel,N_qu_vib_modes,max_occ_qu_vib_modes,Nleads,
+    tol_fermi_symmetrized_barycentric
+
+- HEOM hierarchy size and bath decomposition parameters directly
+  determine computational complexity.
+
+- The Fortran backend depends on several parameters defined here
+  (e.g. Nleads, Nel, Nmodes, coupling strengths).
+
+-----------------------------------------------------------------------
+IMPORTANT
+
+Changing parameters in this file will change all simulation results.
+Consistency between physical parameters and numerical convergence
+settings is required for reliable results.
+"""
+
 import numpy as np
 from constants import * # pylint disable=unused-wildcard-import
 import const_ARK
@@ -94,18 +185,6 @@ elif Nleads == 1:
 
 Kelvin_T = 300
 Temp = Kelvin_T*k_B                                                     # Electrode temperature, assumed to be same for both electrodes
-
-# Define molecular system classical vibrational parameters
-
-freq_vector_cl_vib_modes = [0.03]     # To change
-el_vib_int_cl = [0.01]                # To change
-Vib_Freq_cl = np.zeros(N_cl_vib_modes,dtype=float)
-El_Nuclear_Couplings_cl = np.zeros(N_cl_vib_modes,dtype=float)
-small_polaron_shift_cl = np.zeros(N_cl_vib_modes,dtype=float)
-for itr_cl_vib_modes in range(N_cl_vib_modes):
-    Vib_Freq_cl[itr_cl_vib_modes] = freq_vector_cl_vib_modes[itr_cl_vib_modes]
-    El_Nuclear_Couplings_cl[itr_cl_vib_modes] = np.sqrt(2)*el_vib_int_cl[itr_cl_vib_modes]
-    small_polaron_shift_cl[itr_cl_vib_modes] = (el_vib_int_cl[itr_cl_vib_modes]**2)/Vib_Freq_cl[itr_cl_vib_modes]
 
 # Define system quantum vibrational parameters
 

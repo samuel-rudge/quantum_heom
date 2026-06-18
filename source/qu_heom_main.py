@@ -1,28 +1,105 @@
-# ---------------------------------------------------------------------
+# =============================================================================
+# Main Driver Script: qu_heom_main.py
+# =============================================================================
 #
-#        DEFINING HEOM AND DOING QUANTUM PROPAGATION EXAMPLE MAIN
+# This is the top-level execution script for fully quantum vibronic HEOM
+# simulations of molecular systems coupled to external leads/surfaces.
 #
-# ---------------------------------------------------------------------
+# The code propagates the full reduced density matrix of a combined
+# electronic + vibrational Fock space using a sparse HEOM Liouvillian
+# representation and a Runge–Kutta time integrator.
 #
-# This Python file generates the quantum HEOM and demonstrates how to use it in a 
-# dynamical way within a time propagation. 
-# 
-# Note that one must create the Python wrappers from the Fortran subroutines first 
-# (eta_gamma,sparsity,sparse_propagation). These can be run from the command line as 
-# ./compile_f2py.sh
+# -----------------------------------------------------------------------------
+# Core idea
+# -----------------------------------------------------------------------------
 #
-# There are no direct inputs, rather, one must first change the input_parameters.py and 
-# system.py file to reflect the problem you want to solve. These
-# are imported automatically into this code. 
+# The molecular system is treated fully quantum mechanically:
 #
-# USAGE - :
+#   - Electronic degrees of freedom are quantized
+#   - Vibrational degrees of freedom are quantized
+#   - Electron–vibration coupling is included explicitly in the Hamiltonian
+#   - Coupling to leads is treated via HEOM (open quantum system)
 #
-#       python3 SHEOM_main.py
+# There is no classical nuclear coordinate propagation; instead, the full
+# vibronic density matrix is evolved directly.
 #
-# OUTPUT -
+# -----------------------------------------------------------------------------
+# Workflow overview
+# -----------------------------------------------------------------------------
 #
-#       At the moment, there is no output 
+# At each timestep:
 #
+#   1. Construct / access molecular vibronic Hamiltonian in Fock space
+#   2. Update molecule–lead coupling matrices (if coordinate-dependent)
+#   3. Recompute HEOM Liouvillian coefficients ("pair values")
+#   4. Propagate the full HEOM state vector using sparse RK4 integration
+#   5. Extract physical observables from the propagated density matrix
+#
+# -----------------------------------------------------------------------------
+# Key computational objects
+# -----------------------------------------------------------------------------
+#
+# - Sparse HEOM generator:
+#     Builds hierarchy indices, bath decomposition, and sparse Liouvillian
+#     structure (fixed sparsity pattern + dynamic coefficients).
+#
+# - Sparse propagation engine:
+#     Performs efficient matrix–vector evolution using MKL-optimized sparse
+#     routines and OpenMP parallelization.
+#
+# - Observable module:
+#     Computes electronic populations, vibrational occupations, and currents.
+#
+# -----------------------------------------------------------------------------
+# State representation
+# -----------------------------------------------------------------------------
+#
+# The propagated state vector contains:
+#
+#   - Reduced molecular density matrix (vibronic Fock space)
+#   - Auxiliary density operators (HEOM hierarchy levels)
+#
+# Hilbert space size:
+#
+#   N_system = 2^N_el * (max_occ_qu_vib_modes)^N_qu_vib_modes
+#
+# -----------------------------------------------------------------------------
+# Time propagation loop
+# -----------------------------------------------------------------------------
+#
+# for each timestep:
+#
+#   - Evaluate vibronic Hamiltonian in Fock basis
+#   - Compute molecule–lead coupling matrices
+#   - Update HEOM Liouvillian values (sparse structure fixed)
+#   - Perform RK4 sparse propagation step
+#   - Compute observables:
+#         * mol_pops (density matrix elements)
+#         * current (lead-resolved particle current)
+#
+#   - Store results
+#
+# -----------------------------------------------------------------------------
+# Output files
+# -----------------------------------------------------------------------------
+#
+# mol_pops.dat
+#   Time series of full vibronic density matrix elements.
+#   Each row = timestep, each column = density matrix element.
+#
+# current.dat
+#   Time-dependent particle current through each lead.
+#
+# -----------------------------------------------------------------------------
+# Notes
+# -----------------------------------------------------------------------------
+#
+# - All operators are constructed in a fully quantum vibronic Fock space.
+# - Sparse structure of the Liouvillian is fixed; only coefficients vary.
+# - Performance-critical parts rely on Fortran + MKL sparse BLAS.
+#
+# =============================================================================
+
 
 import generating_quantum_heom_class
 import generate_heom_one_x

@@ -9,6 +9,7 @@ job_submission*
 
 # ARBITRARY
 
+old/
 
 # Python cache / compiled files
 __pycache__/
